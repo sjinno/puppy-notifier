@@ -1,6 +1,9 @@
+use dotenv;
 use reqwest;
 use scraper::{Html, Selector};
 use std::collections::HashSet;
+use std::env;
+use std::thread;
 
 const URL: &str = "https://www.oregonhumane.org/adopt/?type=dogs";
 const DETAIL: &str = "https://www.oregonhumane.org/adopt/details/";
@@ -29,6 +32,10 @@ impl Dog {
 
 #[tokio::main]
 async fn main() -> Result<(), reqwest::Error> {
+    dotenv::dotenv().ok();
+    let telegram_bot_token = env::var("TELEGRAM_TOKEN").expect("telegram_bot_token not found.");
+    let chat_id = env::var("CHAT_ID").expect("chat_id not found.");
+
     let res = reqwest::get(URL).await?;
     println!("Status: {}", res.status());
 
@@ -37,7 +44,7 @@ async fn main() -> Result<(), reqwest::Error> {
     let dog_type_selector = Selector::parse(r#"div[data-ohssb-type="dog"]"#).unwrap();
     let span_selector = Selector::parse(r#"span"#).unwrap();
     let all_dogs = fragment.select(&dog_type_selector);
-    let mut dog_list = HashSet::<Dog>::new();
+    let mut candidates = HashSet::<Dog>::new();
 
     for dog in all_dogs {
         let mut pup = Dog::new();
@@ -60,7 +67,6 @@ async fn main() -> Result<(), reqwest::Error> {
                 Some("age") => {
                     let d_clone = d.inner_html().clone();
                     let split_age = d_clone.split(' ').collect::<Vec<_>>();
-                    // println!("{:?}", split_age);
                     for (i, s) in split_age.iter().enumerate() {
                         if s == &"years" {
                             if split_age[i - 1].parse::<u8>().unwrap() > 4 {
@@ -81,12 +87,39 @@ async fn main() -> Result<(), reqwest::Error> {
             continue;
         }
         pup.url = format!("{}{}/", DETAIL, pup.id);
-        dog_list.insert(pup);
+        candidates.insert(pup);
     }
 
-    for dog in dog_list {
+    for dog in &candidates {
         println!("{:?}", dog);
     }
+
+    thread::spawn(move || {
+        send(&candidates, &telegram_bot_token, &chat_id).expect("Uh-oh. Something went wrong.");
+    })
+    .join()
+    .unwrap();
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn send(
+    candidates: &HashSet<Dog>,
+    telegram_bot_token: &str,
+    chat_id: &str,
+) -> Result<(), reqwest::Error> {
+    let pup = candidates.iter().next().unwrap();
+    let message = format!("{}", pup.name);
+
+    let send_text = format!(
+        "https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=Markdown&text={}",
+        telegram_bot_token, chat_id, message
+    );
+
+    let client = reqwest::Client::new();
+
+    client.post(&send_text).send().await?;
 
     Ok(())
 }
