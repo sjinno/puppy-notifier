@@ -3,12 +3,15 @@ use reqwest::{self, StatusCode};
 use scraper::{Html, Selector};
 use std::collections::HashMap;
 use std::env;
+use std::fmt;
 use std::thread;
 use std::time;
 
 const URL: &str = "https://www.oregonhumane.org/adopt/?type=dogs";
 const DETAIL: &str = "https://www.oregonhumane.org/adopt/details/";
 const EXCEPTIONS: [&str; 4] = ["Pit", "Bull", "Chihuahua", "Terrier"];
+const INTERVAL: u64 = 30; // Every 30 seconds.
+const NUMBER_OF_REQUESTS: usize = 60;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 struct Dog {
@@ -29,12 +32,28 @@ impl Dog {
     }
 }
 
+impl fmt::Display for Dog {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}\n{}\n{}\n{}\n",
+            self.name, self.breed, self.age, self.url
+        )
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 struct Id(String);
 
 impl Id {
     fn new() -> Self {
         Self(String::new())
+    }
+}
+
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -104,12 +123,12 @@ async fn main() -> Result<(), reqwest::Error> {
             }
 
             for (key, val) in &candidates {
-                println!("{:?}, {:?}", key, val);
+                println!("Id: {}\n{}", key, val);
             }
 
             let mut count = 0;
-            while count != 60 {
-                thread::sleep(time::Duration::from_secs(5));
+            while count != NUMBER_OF_REQUESTS {
+                thread::sleep(time::Duration::from_secs(INTERVAL));
                 let mut cands = candidates.clone();
                 let token = telegram_bot_token.clone();
                 let chat = chat_id.clone();
@@ -217,10 +236,7 @@ async fn send(
     chat_id: String,
 ) -> Result<(), reqwest::Error> {
     while let Some(pup) = new_puppies.iter().next() {
-        let message = format!(
-            "{}\n{}\n{}\n{}\n",
-            pup.1.name, pup.1.breed, pup.1.age, pup.1.url
-        );
+        let message = format!("{}", pup.1);
         let send_text = format!(
             "https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=Markdown&text={}",
             telegram_bot_token, chat_id, message
