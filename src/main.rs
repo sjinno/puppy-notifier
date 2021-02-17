@@ -13,23 +13,12 @@ const EXCEPTIONS: [&str; 4] = ["Pit", "Bull", "Chihuahua", "Terrier"];
 const INTERVAL: u64 = 30; // Every 30 seconds.
 const NUMBER_OF_REQUESTS: usize = 60;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
 struct Dog {
     name: String,
     breed: String,
     age: String,
     url: String,
-}
-
-impl Dog {
-    fn new() -> Self {
-        Self {
-            name: String::new(),
-            breed: String::new(),
-            age: String::new(),
-            url: String::new(),
-        }
-    }
 }
 
 impl fmt::Display for Dog {
@@ -42,14 +31,8 @@ impl fmt::Display for Dog {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
 struct Id(String);
-
-impl Id {
-    fn new() -> Self {
-        Self(String::new())
-    }
-}
 
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -77,8 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut candidates = HashMap::<Id, Dog>::new();
 
             for dog in all_dogs {
-                let mut pup = Dog::new();
-                let mut id = Id::new();
+                let mut pup = Dog::default();
+                let mut id = Id::default();
                 let mut exclude = false;
                 let doggy = dog.select(&span_selector);
                 for d in doggy {
@@ -121,6 +104,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 candidates.entry(id).or_insert(pup);
             }
 
+            // // Debugging purpose.
+            // candidates.remove(&Id(String::from("254779")));
+
             for (key, val) in &candidates {
                 println!("Id: {}\n{}", key, val);
             }
@@ -158,8 +144,8 @@ fn get_update(
             let all_dogs = fragment.select(&dog_type_selector);
 
             for dog in all_dogs {
-                let mut pup = Dog::new();
-                let mut id = Id::new();
+                let mut pup = Dog::default();
+                let mut id = Id::default();
                 let mut exclude = false;
                 let doggy = dog.select(&span_selector);
                 for d in doggy {
