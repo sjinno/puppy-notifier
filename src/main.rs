@@ -57,20 +57,19 @@ impl fmt::Display for Id {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), reqwest::Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Environment variables:
     dotenv::dotenv().ok();
     let telegram_bot_token = env::var("TELEGRAM_TOKEN").expect("telegram_bot_token not found.");
     let chat_id = env::var("CHAT_ID").expect("chat_id not found.");
     // Environemnet variables end.
 
-    let res = reqwest::get(URL).await?;
+    let res = reqwest::blocking::get(URL)?;
     // println!("Status: {}", res.status());
 
     match res.status() {
         StatusCode::OK => {
-            let body = res.text().await?;
+            let body = res.text()?;
             let fragment = Html::parse_fragment(&body);
             let dog_type_selector = Selector::parse(r#"div[data-ohssb-type="dog"]"#).unwrap();
             let span_selector = Selector::parse(r#"span"#).unwrap();
@@ -129,14 +128,10 @@ async fn main() -> Result<(), reqwest::Error> {
             let mut count = 0;
             while count != NUMBER_OF_REQUESTS {
                 thread::sleep(time::Duration::from_secs(INTERVAL));
-                let mut cands = candidates.clone();
                 let token = telegram_bot_token.clone();
                 let chat = chat_id.clone();
-                thread::spawn(move || {
-                    get_update(&mut cands, token, chat).expect("Uh-oh. Something went wrong.");
-                })
-                .join()
-                .unwrap();
+                get_update(&mut candidates, token, chat).expect("Uh-oh. Something went wrong.");
+
                 count += 1;
             }
         }
@@ -146,18 +141,17 @@ async fn main() -> Result<(), reqwest::Error> {
     Ok(())
 }
 
-#[tokio::main]
-async fn get_update(
+fn get_update(
     candidates: &mut HashMap<Id, Dog>,
     token: String,
     chat_id: String,
-) -> Result<(), reqwest::Error> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut new_puppies = HashMap::<Id, Dog>::new();
-    let res = reqwest::get(URL).await?;
+    let res = reqwest::blocking::get(URL)?;
 
     match res.status() {
         StatusCode::OK => {
-            let body = res.text().await?;
+            let body = res.text()?;
             let fragment = Html::parse_fragment(&body);
             let dog_type_selector = Selector::parse(r#"div[data-ohssb-type="dog"]"#).unwrap();
             let span_selector = Selector::parse(r#"span"#).unwrap();
@@ -217,11 +211,7 @@ async fn get_update(
     }
 
     if !new_puppies.is_empty() {
-        thread::spawn(move || {
-            send(&new_puppies, token, chat_id).expect("Uh-oh. Something went wrong.");
-        })
-        .join()
-        .unwrap();
+        send(&new_puppies, token, chat_id).expect("Uh-oh. Something went wrong.");
     } else {
         println!("No new puppies posted yet :(");
     }
@@ -229,20 +219,26 @@ async fn get_update(
     Ok(())
 }
 
-#[tokio::main]
-async fn send(
+fn send(
     new_puppies: &HashMap<Id, Dog>,
     telegram_bot_token: String,
     chat_id: String,
-) -> Result<(), reqwest::Error> {
-    while let Some(pup) = new_puppies.iter().next() {
-        let message = format!("{}", pup.1);
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut pups = new_puppies.iter();
+    while let Some(pup) = pups.next() {
+        let message = format!(
+            r#"{}%0A
+{}%0A
+{}%0A
+{}"#,
+            pup.1.name, pup.1.breed, pup.1.age, pup.1.url
+        );
         let send_text = format!(
             "https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=Markdown&text={}",
             telegram_bot_token, chat_id, message
         );
-        let client = reqwest::Client::new();
-        client.post(&send_text).send().await?;
+        let client = reqwest::blocking::Client::new();
+        client.post(&send_text).send()?;
     }
     Ok(())
 }
