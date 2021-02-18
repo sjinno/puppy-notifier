@@ -13,7 +13,7 @@ const EXCEPTIONS: [&str; 4] = ["Pit", "Bull", "Chihuahua", "Terrier"];
 const INTERVAL: u64 = 30; // Every 30 seconds.
 const NUMBER_OF_REQUESTS: usize = 60;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
+#[derive(Clone, Default, Eq, PartialEq, Hash)]
 struct Dog {
     name: String,
     breed: String,
@@ -31,7 +31,7 @@ impl fmt::Display for Dog {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
+#[derive(Clone, Default, Eq, PartialEq, Hash)]
 struct Id(String);
 
 impl fmt::Display for Id {
@@ -59,6 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let all_dogs = fragment.select(&dog_type_selector);
             let mut candidates = HashMap::<Id, Dog>::new();
 
+            // Initialize the initial state of all dogs (filtered) that are currently available.
             for dog in all_dogs {
                 let mut pup = Dog::default();
                 let mut id = Id::default();
@@ -103,6 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 pup.url = format!("{}{}/", DETAIL, id.0);
                 candidates.entry(id).or_insert(pup);
             }
+            // End of initialization.
 
             // // Debugging purpose.
             // candidates.remove(&Id(String::from("254779")));
@@ -111,17 +113,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Id: {}\n{}", key, val);
             }
 
+            // Main loop.
             let mut count = 0;
             while count != NUMBER_OF_REQUESTS {
                 thread::sleep(time::Duration::from_secs(INTERVAL));
-                let token = telegram_bot_token.clone();
-                let chat = chat_id.clone();
-                get_update(&mut candidates, token, chat).expect("Uh-oh. Something went wrong.");
-
+                get_update(&mut candidates, telegram_bot_token.clone(), chat_id.clone())
+                    .expect("Uh-oh. Something went wrong.");
                 count += 1;
             }
         }
-        _ => (),
+        _ => println!("Uh oh, the link may be broken :("),
     }
 
     Ok(())
@@ -193,7 +194,7 @@ fn get_update(
                 candidates.entry(id).or_insert(pup);
             }
         }
-        _ => (),
+        _ => println!("Uh oh, the link may be broken :("),
     }
 
     if !new_puppies.is_empty() {
