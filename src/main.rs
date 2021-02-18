@@ -164,7 +164,10 @@ fn get_update(
                         Some("name") => pup.name = d.inner_html(),
                         Some("id") => {
                             id.0 = d.inner_html();
-                            exclude = candidates.contains_key(&id);
+                            if candidates.contains_key(&id) {
+                                exclude = true;
+                                break;
+                            }
                         }
                         Some("age") => {
                             let d_clone = d.inner_html().clone();
