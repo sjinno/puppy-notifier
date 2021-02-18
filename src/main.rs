@@ -12,6 +12,7 @@ use std::time;
 const URL: &str = "https://www.oregonhumane.org/adopt/?type=dogs";
 const DETAIL: &str = "https://www.oregonhumane.org/adopt/details/";
 const EXCEPTIONS: [&str; 4] = ["Pit", "Bull", "Chihuahua", "Terrier"];
+const MIN_AGE: &u8 = &4;
 const INTERVAL: u64 = 30; // Every 30 seconds.
 const NUMBER_OF_REQUESTS: usize = 60;
 
@@ -86,7 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let split_age = d_clone.split(' ').collect::<Vec<_>>();
                             for (i, s) in split_age.iter().enumerate() {
                                 if s == &"years" {
-                                    if split_age[i - 1].parse::<u8>().unwrap() > 4 {
+                                    if &split_age[i - 1].parse::<u8>().unwrap() > MIN_AGE {
                                         exclude = true;
                                         break;
                                     }
@@ -176,7 +177,7 @@ fn get_update(
                             let split_age = d_clone.split(' ').collect::<Vec<_>>();
                             for (i, s) in split_age.iter().enumerate() {
                                 if s == &"years" {
-                                    if split_age[i - 1].parse::<u8>().unwrap() > 4 {
+                                    if &split_age[i - 1].parse::<u8>().unwrap() > MIN_AGE {
                                         exclude = true;
                                         break;
                                     }
