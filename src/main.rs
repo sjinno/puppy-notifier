@@ -73,8 +73,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match cls_name {
                         Some("breed") => {
                             let d_clone = d.inner_html().clone();
-                            let split_breed = d_clone.split(' ').collect::<Vec<_>>();
-                            if split_breed.into_iter().any(|b| EXCEPTIONS.contains(&b)) {
+                            if d_clone
+                                .split(' ')
+                                .into_iter()
+                                .any(|b| EXCEPTIONS.contains(&b))
+                            {
                                 exclude = true;
                                 break;
                             }
@@ -85,12 +88,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some("age") => {
                             let d_clone = d.inner_html().clone();
                             let mut split_age = d_clone.split(' ').take(2);
-                            let num = split_age.next().unwrap().parse::<u8>().unwrap();
+                            let num = split_age.next();
                             let yr = split_age.next();
-                            if yr == Some("years") {
-                                if &num > MIN_AGE {
-                                    exclude = true;
-                                    break;
+                            if let Some(n) = num {
+                                match yr {
+                                    Some("years") => {
+                                        let n: u8 = match n.parse() {
+                                            Ok(num) => num,
+                                            Err(_) => continue,
+                                        };
+                                        if &n > MIN_AGE {
+                                            exclude = true;
+                                            break;
+                                        }
+                                    }
+                                    _ => (),
                                 }
                             }
                             pup.age = d.inner_html();
@@ -106,11 +118,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             // End of initialization.
 
-            // // Debugging purpose.
+            // // Testing purpose.
             // candidates.remove(&Id(String::from("201359")));
 
-            for (key, val) in &candidates {
-                println!("Id: {}\n{}", key, val);
+            for (id, dog) in &candidates {
+                println!("Id: {}\n{}", id, dog);
             }
 
             // Main loop.
@@ -154,8 +166,11 @@ fn get_update(
                     match cls_name {
                         Some("breed") => {
                             let d_clone = d.inner_html().clone();
-                            let split_breed = d_clone.split(' ').collect::<Vec<_>>();
-                            if split_breed.into_iter().any(|b| EXCEPTIONS.contains(&b)) {
+                            if d_clone
+                                .split(' ')
+                                .into_iter()
+                                .any(|b| EXCEPTIONS.contains(&b))
+                            {
                                 exclude = true;
                                 break;
                             }
@@ -172,12 +187,21 @@ fn get_update(
                         Some("age") => {
                             let d_clone = d.inner_html().clone();
                             let mut split_age = d_clone.split(' ').take(2);
-                            let num = split_age.next().unwrap().parse::<u8>().unwrap();
+                            let num = split_age.next();
                             let yr = split_age.next();
-                            if yr == Some("years") {
-                                if &num > MIN_AGE {
-                                    exclude = true;
-                                    break;
+                            if let Some(n) = num {
+                                match yr {
+                                    Some("years") => {
+                                        let n: u8 = match n.parse() {
+                                            Ok(num) => num,
+                                            Err(_) => continue,
+                                        };
+                                        if &n > MIN_AGE {
+                                            exclude = true;
+                                            break;
+                                        }
+                                    }
+                                    _ => (),
                                 }
                             }
                             pup.age = d.inner_html();
