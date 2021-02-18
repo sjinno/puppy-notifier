@@ -1,9 +1,11 @@
 use dotenv;
 use reqwest::{self, StatusCode};
+use rodio;
 use scraper::{Html, Selector};
 use std::collections::HashMap;
 use std::env;
 use std::fmt;
+use std::io;
 use std::thread;
 use std::time;
 
@@ -107,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // End of initialization.
 
             // // Debugging purpose.
-            // candidates.remove(&Id(String::from("254779")));
+            // candidates.remove(&Id(String::from("201359")));
 
             for (key, val) in &candidates {
                 println!("Id: {}\n{}", key, val);
@@ -201,6 +203,13 @@ fn get_update(
     }
 
     if !new_puppies.is_empty() {
+        println!("New puppy/puppies found!");
+
+        let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+        let file = std::fs::File::open("audio/puppy_bark.wav").unwrap();
+        let bark = stream_handle.play_once(io::BufReader::new(file)).unwrap();
+        bark.set_volume(0.5);
+
         send(&new_puppies, token, chat_id).expect("Uh-oh. Something went wrong.");
     } else {
         println!("No new puppies posted yet :(");
