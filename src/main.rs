@@ -84,17 +84,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some("id") => id.0 = d.inner_html(),
                         Some("age") => {
                             let d_clone = d.inner_html().clone();
-                            let split_age = d_clone.split(' ').collect::<Vec<_>>();
-                            for (i, s) in split_age.iter().enumerate() {
-                                if s == &"years" {
-                                    if &split_age[i - 1].parse::<u8>().unwrap() > MIN_AGE {
-                                        exclude = true;
-                                        break;
-                                    }
+                            let mut split_age = d_clone.split(' ').take(2);
+                            let num = split_age.next().unwrap().parse::<u8>().unwrap();
+                            let yr = split_age.next();
+                            if yr == Some("years") {
+                                if &num > MIN_AGE {
+                                    exclude = true;
+                                    break;
                                 }
-                            }
-                            if exclude {
-                                break;
                             }
                             pup.age = d.inner_html();
                         }
@@ -174,19 +171,16 @@ fn get_update(
                         }
                         Some("age") => {
                             let d_clone = d.inner_html().clone();
-                            let split_age = d_clone.split(' ').collect::<Vec<_>>();
-                            for (i, s) in split_age.iter().enumerate() {
-                                if s == &"years" {
-                                    if &split_age[i - 1].parse::<u8>().unwrap() > MIN_AGE {
-                                        exclude = true;
-                                        break;
-                                    }
+                            let mut split_age = d_clone.split(' ').take(2);
+                            let num = split_age.next().unwrap().parse::<u8>().unwrap();
+                            let yr = split_age.next();
+                            if yr == Some("years") {
+                                if &num > MIN_AGE {
+                                    exclude = true;
+                                    break;
                                 }
                             }
-                            if exclude {
-                                break;
-                            }
-                            pup.age = d.inner_html()
+                            pup.age = d.inner_html();
                         }
                         _ => (),
                     }
