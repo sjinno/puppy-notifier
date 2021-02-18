@@ -227,10 +227,7 @@ fn send(
     let mut pups = new_puppies.iter();
     while let Some(pup) = pups.next() {
         let message = format!(
-            r#"{}%0A
-{}%0A
-{}%0A
-{}"#,
+            r#"{}%0A{}%0A{}%0A{}"#,
             pup.1.name, pup.1.breed, pup.1.age, pup.1.url
         );
         let send_text = format!(
