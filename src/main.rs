@@ -13,8 +13,8 @@ const URL: &str = "https://www.oregonhumane.org/adopt/?type=dogs";
 const DETAIL: &str = "https://www.oregonhumane.org/adopt/details/";
 const EXCEPTIONS: [&str; 4] = ["Pit", "Bull", "Chihuahua", "Terrier"];
 const MIN_AGE: &u8 = &4;
-const INTERVAL: u64 = 30; // Every 30 seconds.
-const NUMBER_OF_REQUESTS: usize = 90;
+const INTERVAL: &u64 = &30; // Every 30 seconds.
+const NUMBER_OF_REQUESTS: &usize = &90;
 
 #[derive(Clone, Default, Eq, PartialEq, Hash)]
 struct Dog {
@@ -59,8 +59,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let body = res.text()?;
             let mut candidates = get_currently_available_dogs(&body);
 
-            // // TESTING PURPOSE:
+            // // ============== TESTING PURPOSE ==============
             // candidates.remove(&Id(String::from("201359")));
+            // // =============================================
 
             for (id, dog) in &candidates {
                 println!("Id: {}\n{}", id, dog);
@@ -68,9 +69,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Main loop.
             let mut count = 0;
-            while count != NUMBER_OF_REQUESTS {
-                thread::sleep(time::Duration::from_secs(INTERVAL));
-                get_update(&mut candidates, telegram_bot_token.clone(), chat_id.clone())
+            while count != *NUMBER_OF_REQUESTS {
+                thread::sleep(time::Duration::from_secs(*INTERVAL));
+                get_update(&mut candidates, &telegram_bot_token, &chat_id)
                     .expect("Uh-oh. Something went wrong.");
                 count += 1;
             }
@@ -81,7 +82,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// Initializes the initial state of all dogs (filtered with EXCEPTIONS and MIN_AGE) that are currently available.
+// Initializes the initial state of all dogs (filtered with EXCEPTIONS and MIN_AGE)
+// that are currently available.
 fn get_currently_available_dogs(body: &str) -> HashMap<Id, Dog> {
     let fragment = Html::parse_fragment(&body);
     let dog_type_selector = Selector::parse(r#"div[data-ohssb-type="dog"]"#).unwrap();
@@ -98,8 +100,7 @@ fn get_currently_available_dogs(body: &str) -> HashMap<Id, Dog> {
             let field_name = d.value().attr("class");
             match field_name {
                 Some("breed") => {
-                    let d_clone = d.inner_html().clone();
-                    if d_clone
+                    if d.inner_html()
                         .split(' ')
                         .into_iter()
                         .any(|b| EXCEPTIONS.contains(&b))
@@ -142,15 +143,18 @@ fn get_currently_available_dogs(body: &str) -> HashMap<Id, Dog> {
         pup.url = format!("{}{}/", DETAIL, id.0);
         candidates.entry(id).or_insert(pup);
     }
-    // End of initialization.
 
     candidates
 }
 
+// Sends a request to OHS website to check if there are any updates on new dogs.
+// If there are new dogs, add them to both `candiates` and `new_puppies` lists and call
+// `send()` to notify users with the details of the new dogs.
+// `new_puppies` list will be dropped after every call of this function.
 fn get_update(
     candidates: &mut HashMap<Id, Dog>,
-    token: String,
-    chat_id: String,
+    token: &str,
+    chat_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut new_puppies = HashMap::<Id, Dog>::new();
     let res = reqwest::blocking::get(URL)?;
@@ -172,8 +176,7 @@ fn get_update(
                     let field_name = d.value().attr("class");
                     match field_name {
                         Some("breed") => {
-                            let d_clone = d.inner_html().clone();
-                            if d_clone
+                            if d.inner_html()
                                 .split(' ')
                                 .into_iter()
                                 .any(|b| EXCEPTIONS.contains(&b))
@@ -243,10 +246,11 @@ fn get_update(
     Ok(())
 }
 
+// Sends Telegram messages if new posts are found.
 fn send(
     new_puppies: &HashMap<Id, Dog>,
-    telegram_bot_token: String,
-    chat_id: String,
+    telegram_bot_token: &str,
+    chat_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut pups = new_puppies.iter();
     while let Some(pup) = pups.next() {
