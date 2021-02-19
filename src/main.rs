@@ -14,7 +14,7 @@ const DETAIL: &str = "https://www.oregonhumane.org/adopt/details/";
 const EXCEPTIONS: [&str; 4] = ["Pit", "Bull", "Chihuahua", "Terrier"];
 const MIN_AGE: &u8 = &4;
 const INTERVAL: u64 = 30; // Every 30 seconds.
-const NUMBER_OF_REQUESTS: usize = 60;
+const NUMBER_OF_REQUESTS: usize = 90;
 
 #[derive(Clone, Default, Eq, PartialEq, Hash)]
 struct Dog {
@@ -46,8 +46,9 @@ impl fmt::Display for Id {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Environment variables:
     dotenv::dotenv().ok();
-    let telegram_bot_token = env::var("TELEGRAM_TOKEN").expect("telegram_bot_token not found.");
-    let chat_id = env::var("CHAT_ID").expect("chat_id not found.");
+    let telegram_bot_token =
+        env::var("TELEGRAM_TOKEN").expect("TELEGRAM_TOKEN not found in .env file.");
+    let chat_id = env::var("CHAT_ID").expect("CHAT_ID not found in .env file.");
     // Environemnet variables end.
 
     let res = reqwest::blocking::get(URL)?;
@@ -69,8 +70,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut exclude = false;
                 let doggy = dog.select(&span_selector);
                 for d in doggy {
-                    let cls_name = d.value().attr("class");
-                    match cls_name {
+                    let field_name = d.value().attr("class");
+                    match field_name {
                         Some("breed") => {
                             let d_clone = d.inner_html().clone();
                             if d_clone
@@ -162,8 +163,8 @@ fn get_update(
                 let mut exclude = false;
                 let doggy = dog.select(&span_selector);
                 for d in doggy {
-                    let cls_name = d.value().attr("class");
-                    match cls_name {
+                    let field_name = d.value().attr("class");
+                    match field_name {
                         Some("breed") => {
                             let d_clone = d.inner_html().clone();
                             if d_clone
