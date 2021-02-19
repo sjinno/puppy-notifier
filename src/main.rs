@@ -57,69 +57,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match res.status() {
         StatusCode::OK => {
             let body = res.text()?;
-            let fragment = Html::parse_fragment(&body);
-            let dog_type_selector = Selector::parse(r#"div[data-ohssb-type="dog"]"#).unwrap();
-            let span_selector = Selector::parse(r#"span"#).unwrap();
-            let all_dogs = fragment.select(&dog_type_selector);
-            let mut candidates = HashMap::<Id, Dog>::new();
+            let mut candidates = get_currently_available_dogs(&body);
 
-            // Initialize the initial state of all dogs (filtered) that are currently available.
-            for dog in all_dogs {
-                let mut pup = Dog::default();
-                let mut id = Id::default();
-                let mut exclude = false;
-                let doggy = dog.select(&span_selector);
-                for d in doggy {
-                    let field_name = d.value().attr("class");
-                    match field_name {
-                        Some("breed") => {
-                            let d_clone = d.inner_html().clone();
-                            if d_clone
-                                .split(' ')
-                                .into_iter()
-                                .any(|b| EXCEPTIONS.contains(&b))
-                            {
-                                exclude = true;
-                                break;
-                            }
-                            pup.breed = d.inner_html();
-                        }
-                        Some("name") => pup.name = d.inner_html(),
-                        Some("id") => id.0 = d.inner_html(),
-                        Some("age") => {
-                            let d_clone = d.inner_html().clone();
-                            let mut split_age = d_clone.split(' ').take(2);
-                            let num = split_age.next();
-                            let yr = split_age.next();
-                            if let Some(n) = num {
-                                match yr {
-                                    Some("years") => {
-                                        let n: u8 = match n.parse() {
-                                            Ok(num) => num,
-                                            Err(_) => continue,
-                                        };
-                                        if &n > MIN_AGE {
-                                            exclude = true;
-                                            break;
-                                        }
-                                    }
-                                    _ => (),
-                                }
-                            }
-                            pup.age = d.inner_html();
-                        }
-                        _ => (),
-                    }
-                }
-                if exclude {
-                    continue;
-                }
-                pup.url = format!("{}{}/", DETAIL, id.0);
-                candidates.entry(id).or_insert(pup);
-            }
-            // End of initialization.
-
-            // // Testing purpose.
+            // // TESTING PURPOSE:
             // candidates.remove(&Id(String::from("201359")));
 
             for (id, dog) in &candidates {
@@ -139,6 +79,72 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+// Initializes the initial state of all dogs (filtered with EXCEPTIONS and MIN_AGE) that are currently available.
+fn get_currently_available_dogs(body: &str) -> HashMap<Id, Dog> {
+    let fragment = Html::parse_fragment(&body);
+    let dog_type_selector = Selector::parse(r#"div[data-ohssb-type="dog"]"#).unwrap();
+    let span_selector = Selector::parse(r#"span"#).unwrap();
+    let all_dogs = fragment.select(&dog_type_selector);
+    let mut candidates = HashMap::<Id, Dog>::new();
+
+    for dog in all_dogs {
+        let mut pup = Dog::default();
+        let mut id = Id::default();
+        let mut exclude = false;
+        let doggy = dog.select(&span_selector);
+        for d in doggy {
+            let field_name = d.value().attr("class");
+            match field_name {
+                Some("breed") => {
+                    let d_clone = d.inner_html().clone();
+                    if d_clone
+                        .split(' ')
+                        .into_iter()
+                        .any(|b| EXCEPTIONS.contains(&b))
+                    {
+                        exclude = true;
+                        break;
+                    }
+                    pup.breed = d.inner_html();
+                }
+                Some("name") => pup.name = d.inner_html(),
+                Some("id") => id.0 = d.inner_html(),
+                Some("age") => {
+                    let d_clone = d.inner_html().clone();
+                    let mut split_age = d_clone.split(' ').take(2);
+                    let num = split_age.next();
+                    let yr = split_age.next();
+                    if let Some(n) = num {
+                        match yr {
+                            Some("years") => {
+                                let n: u8 = match n.parse() {
+                                    Ok(num) => num,
+                                    Err(_) => continue,
+                                };
+                                if &n > MIN_AGE {
+                                    exclude = true;
+                                    break;
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                    pup.age = d.inner_html();
+                }
+                _ => (),
+            }
+        }
+        if exclude {
+            continue;
+        }
+        pup.url = format!("{}{}/", DETAIL, id.0);
+        candidates.entry(id).or_insert(pup);
+    }
+    // End of initialization.
+
+    candidates
 }
 
 fn get_update(
@@ -214,7 +220,6 @@ fn get_update(
                     continue;
                 }
                 pup.url = format!("{}{}/", DETAIL, id.0);
-
                 new_puppies.entry(id.clone()).or_insert(pup.clone());
                 candidates.entry(id).or_insert(pup);
             }
