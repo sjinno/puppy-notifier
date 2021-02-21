@@ -1453,6 +1453,7 @@ name = "puppy-notifier"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "form_urlencoded",
  "reqwest",
  "rodio",
  "scraper",

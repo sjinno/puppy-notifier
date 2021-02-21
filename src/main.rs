@@ -1,4 +1,5 @@
 use dotenv;
+use form_urlencoded::Serializer;
 use reqwest::{self, StatusCode};
 use rodio;
 use scraper::{Html, Selector};
@@ -12,8 +13,8 @@ use std::time;
 const URL: &str = "https://www.oregonhumane.org/adopt/?type=dogs";
 const DETAIL: &str = "https://www.oregonhumane.org/adopt/details/";
 const EXCEPTIONS: [&str; 4] = ["Pit", "Bull", "Chihuahua", "Terrier"];
-const MIN_AGE: &u8 = &4;
-const INTERVAL: &u64 = &30; // Every 30 seconds.
+const MAX_AGE: &u8 = &4;
+const INTERVAL: &u64 = &60; // Every 30 seconds.
 const NUMBER_OF_REQUESTS: &usize = &90;
 
 #[derive(Clone, Default, Eq, PartialEq, Hash)]
@@ -39,7 +40,7 @@ struct Id(String);
 
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        self.0.fmt(f)
     }
 }
 
@@ -124,7 +125,7 @@ fn get_currently_available_dogs(body: &str) -> HashMap<Id, Dog> {
                                     Ok(num) => num,
                                     Err(_) => continue,
                                 };
-                                if &n > MIN_AGE {
+                                if &n > MAX_AGE {
                                     exclude = true;
                                     break;
                                 }
@@ -206,7 +207,7 @@ fn get_update(
                                             Ok(num) => num,
                                             Err(_) => continue,
                                         };
-                                        if &n > MIN_AGE {
+                                        if &n > MAX_AGE {
                                             exclude = true;
                                             break;
                                         }
@@ -252,18 +253,25 @@ fn send(
     telegram_bot_token: &str,
     chat_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut pups = new_puppies.iter();
-    while let Some(pup) = pups.next() {
+    for pup in new_puppies.values() {
         let message = format!(
-            r#"{}%0A{}%0A{}%0A{}"#,
-            pup.1.name, pup.1.breed, pup.1.age, pup.1.url
+            "name: {}\n\
+                               breed: {}\n\
+                               age: {}\n\
+                               {}",
+            pup.name, pup.breed, pup.age, pup.url
         );
-        let send_text = format!(
-            "https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=Markdown&text={}",
-            telegram_bot_token, chat_id, message
+        let parameters = Serializer::new(String::new())
+            .append_pair("chat_id", chat_id)
+            .append_pair("parse_mode", "Markdown")
+            .append_pair("text", &message)
+            .finish();
+        let url = format!(
+            "https://api.telegram.org/bot{}/sendMessage?{}",
+            telegram_bot_token, parameters
         );
         let client = reqwest::blocking::Client::new();
-        client.post(&send_text).send()?;
+        client.post(&url).send()?;
     }
     Ok(())
 }
